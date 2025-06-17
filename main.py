@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import numpy as np
 import joblib
+import uvicorn
 
 # Load model and scaler
 try:
@@ -41,7 +42,6 @@ def predict_water_quality(data: SensorInput):
 
         print("[INFO] Raw input:", features)
 
-       
         X = scaler.transform([features])
         prediction = model.predict(X)[0]
         result = "Potable" if prediction == 1 else "Not Potable"
@@ -56,3 +56,7 @@ def predict_water_quality(data: SensorInput):
         return {
             "error": str(e)
         }
+
+# 👇 Add this block at the bottom to allow Railway to start the server
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)
