@@ -5,6 +5,14 @@ from pydantic import BaseModel, Field
 import joblib
 import numpy as np
 
+import os
+import uvicorn
+from fastapi import FastAPI
+# … your imports & app definition …
+
+
+
+
 # Define the request body schema with exactly 5 features
 class SensorInput(BaseModel):
     ph:              float = Field(..., example=7.0, description="pH level")
@@ -65,3 +73,7 @@ def predict(input: SensorInput):
         "prediction": int(pred),
         "result":     "Potable" if pred == 1 else "Not Potable"
     }
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
