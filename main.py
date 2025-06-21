@@ -10,6 +10,13 @@ import uvicorn
 from fastapi import FastAPI
 # … your imports & app definition …
 
+@app.get("/", summary="Health check")
+def health():
+    """
+    A quick ping route to confirm the server is up. 
+    Returns HTTP 200 with { "status": "ok" }.
+    """
+    return { "status": "ok" }
 
 
 
