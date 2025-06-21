@@ -1,62 +1,67 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-import numpy as np
+# main.py
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 import joblib
-import uvicorn
+import numpy as np
 
-# Load model and scaler
-try:
-    model = joblib.load("xgb_full_model.pkl")
-    scaler = joblib.load("xgb_scaler.save")
-    print("[INFO] Model and scaler loaded successfully.")
-except Exception as e:
-    print("[ERROR] Failed to load model or scaler:", e)
-
-app = FastAPI()
-
+# Define the request body schema with exactly 5 features
 class SensorInput(BaseModel):
-    ph: float
-    Hardness: float
-    Solids: float
-    Chloramines: float
-    Sulfate: float
-    Conductivity: float
-    Organic_carbon: float
-    Trihalomethanes: float
-    Turbidity: float
+    ph:              float = Field(..., example=7.0, description="pH level")
+    Temperature:     float = Field(..., example=25.0, description="Water temperature (°C)")
+    DissolvedOxygen: float = Field(..., example=8.5, description="Dissolved oxygen (mg/L)")
+    TDS:             float = Field(..., example=300.0, description="Total dissolved solids (mg/L)")
+    Turbidity:       float = Field(..., example=1.2, description="Turbidity (NTU)")
 
-@app.post("/predict")
-def predict_water_quality(data: SensorInput):
+app = FastAPI(
+    title="Water Potability Predictor (5-Feature Model)",
+    version="2.0"
+)
+
+# Load your retrained model and scaler
+try:
+    model  = joblib.load("xgb_baseline_model.pkl")
+    scaler = joblib.load("xgb_baseline_scaler.save")
+    print("[INFO] Loaded model and scaler for 5-feature pipeline.")
+except Exception as e:
+    # If loading fails, crash early so you notice
+    print("[ERROR] Could not load model or scaler:", e)
+    raise
+
+@app.post("/predict", summary="Predict water potability from 5 sensor readings")
+def predict(input: SensorInput):
+    """
+    Returns:
+    - prediction: 1 if Potable, 0 if Not Potable
+    - result: "Potable" or "Not Potable"
+    
+    Example request body:
+    {
+      "ph": 7.1,
+      "Temperature": 24.5,
+      "DissolvedOxygen": 8.0,
+      "TDS": 350.0,
+      "Turbidity": 1.5
+    }
+    """
+    # Build feature vector in the order the model expects
+    features = [
+        input.ph,
+        input.Temperature,
+        input.DissolvedOxygen,
+        input.TDS,
+        input.Turbidity
+    ]
+
     try:
-        features = [
-            data.ph,
-            data.Hardness,
-            data.Solids,
-            data.Chloramines,
-            data.Sulfate,
-            data.Conductivity,
-            data.Organic_carbon,
-            data.Trihalomethanes,
-            data.Turbidity
-        ]
+        # Scale and predict
+        X_scaled = scaler.transform([features])  # shape (1,5)
+        pred      = model.predict(X_scaled)[0]   # 0 or 1
+    except Exception as err:
+        # If something goes wrong, return a 500 with the error message
+        raise HTTPException(status_code=500, detail=str(err))
 
-        print("[INFO] Raw input:", features)
-
-        X = scaler.transform([features])
-        prediction = model.predict(X)[0]
-        result = "Potable" if prediction == 1 else "Not Potable"
-
-        return {
-            "prediction": int(prediction),
-            "result": result
-        }
-
-    except Exception as e:
-        print("[ERROR] Prediction failed:", e)
-        return {
-            "error": str(e)
-        }
-
-# 👇 Add this block at the bottom to allow Railway to start the server
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    return {
+        "prediction": int(pred),
+        "result":     "Potable" if pred == 1 else "Not Potable"
+    }
