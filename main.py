@@ -4,6 +4,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
+from fastapi import Request
 
 # ------------- 1) Define your FastAPI app -------------
 app = FastAPI(
@@ -40,6 +41,7 @@ app.add_middleware(
 
 
 # ------------- 2) Health‐check endpoint -------------
+
 @app.get("/", summary="Health check")
 def health():
     """
@@ -88,6 +90,11 @@ def predict(input: SensorInput):
         "result": "Potable" if pred == 1 else "Not Potable"
     }
 
+@app.post("/sensordata", summary="Receive raw sensor data from AWS IoT")
+async def receive_sensor_data(request: Request):
+    payload = await request.json()
+    print("[AWS IoT] Received Payload:", payload)
+    return {"message": "Sensor data received"}
 # ------------- 6) Run with Uvicorn -------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
