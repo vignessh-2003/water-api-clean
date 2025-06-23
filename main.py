@@ -1,7 +1,7 @@
 import os
 import joblib
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException 
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
 from fastapi import Request
